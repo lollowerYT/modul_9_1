@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Список покупок</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <style>
+        /* Простые стили для оформления */
+        body { font-family: sans-serif; margin: 20px; }
+        #add-item-form { margin-bottom: 20px; }
+        #add-item-form input { margin-right: 5px; }
+        ul { list-style-type: none; padding: 0; }
+        li { margin-bottom: 8px; }
+        .purchased { text-decoration: line-through; color: grey; }
+        .delete-btn, .purchase-btn { margin-left: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+<h1>Мой список покупок</h1>
+
+<div id="add-item-form">
+    <input type="text" id="item-name" placeholder="Что нужно купить?">
+    <button id="add-btn">Добавить</button>
+</div>
+
+<ul id="item-list">
+    <!-- Сюда будет динамически добавляться список -->
+</ul>
+
+<script>
+    $(document).ready(function() {
+        // Функция для загрузки и отображения всех элементов
+        function loadItems() {
+            $('#item-list').empty();
+            $.ajax({
+                url: '/api/items',
+                method: 'GET',
+                success: function(items) {
+                    items.forEach(function(item) {
+                        var listItem = `<li id="item-${item.id}">
+                                <span class="${item.purchased ? 'purchased' : ''}">${item.name}</span>
+                                <button class="purchase-btn" data-id="${item.id}" data-purchased="${item.purchased}">
+                                    ${item.purchased ? 'Куплено' : 'Купить'}
+                                </button>
+                                <button class="delete-btn" data-id="${item.id}">Удалить</button>
+                            </li>`;
+                        $('#item-list').append(listItem);
+                    });
+                }
+            });
+        }
+
+        // Первоначальная загрузка списка
+        loadItems();
+
+        // Обработчик добавления нового элемента
+        $('#add-btn').click(function() {
+            var itemName = $('#item-name').val();
+            if (itemName) {
+                $.ajax({
+                    url: '/api/items',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ name: itemName }),
+                    success: function() {
+                        $('#item-name').val(''); // Очищаем поле ввода
+                        loadItems(); // Обновляем список
+                    }
+                });
+            }
+        });
+
+        // Обработчик клика по кнопкам "Купить" и "Удалить"
+        $('#item-list').on('click', '.purchase-btn', function() {
+            var itemId = $(this).data('id');
+            var isPurchased = $(this).data('purchased');
+            $.ajax({
+                url: `/api/items/${itemId}`,
+                method: 'PATCH',
+                contentType: 'application/json',
+                data: JSON.stringify({ purchased: !isPurchased }),
+                success: function() {
+                    loadItems();
+                }
+            });
+        });
+
+        $('#item-list').on('click', '.delete-btn', function() {
+            var itemId = $(this).data('id');
+            $.ajax({
+                url: `/api/items/${itemId}`,
+                method: 'DELETE',
+                success: function() {
+                    loadItems(); // Обновляем список
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>
